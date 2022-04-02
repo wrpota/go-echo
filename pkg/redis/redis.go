@@ -3,44 +3,41 @@ package redis
 import (
 	"time"
 
+	"github.com/wrpota/go-echo/configs"
 	"github.com/wrpota/go-echo/internal/global/variable"
-	event_manage "github.com/wrpota/go-echo/internal/pkg/core/event"
-	"github.com/wrpota/go-echo/pkg/config"
-	"github.com/wrpota/go-echo/pkg/config/config_interface"
+	event_manage "github.com/wrpota/go-echo/internal/pkg/event"
 
 	"github.com/gomodule/redigo/redis"
 	"go.uber.org/zap"
 )
 
 var redisPool *redis.Pool
-var configYml config_interface.ConfigInterface
 
 // 处于程序底层的包，init 初始化的代码段的执行会优先于上层代码，因此这里读取配置项不能使用全局配置项变量
 func init() {
-	configYml = config.CreateYamlFactory()
 	redisPool = initRedisClientPool()
 }
 
 func initRedisClientPool() *redis.Pool {
 	redisPool = &redis.Pool{
-		MaxIdle:     configYml.GetInt("Redis.MaxIdle"),                        //最大空闲数
-		MaxActive:   configYml.GetInt("Redis.MaxActive"),                      //最大活跃数
-		IdleTimeout: configYml.GetDuration("Redis.IdleTimeout") * time.Second, //最大的空闲连接等待时间，超过此时间后，空闲连接将被关闭
+		MaxIdle:     configs.Get().GetInt("Redis.MaxIdle"),                        //最大空闲数
+		MaxActive:   configs.Get().GetInt("Redis.MaxActive"),                      //最大活跃数
+		IdleTimeout: configs.Get().GetDuration("Redis.IdleTimeout") * time.Second, //最大的空闲连接等待时间，超过此时间后，空闲连接将被关闭
 		Dial: func() (redis.Conn, error) {
 			//此处对应redis ip及端口号
-			conn, err := redis.Dial("tcp", configYml.GetString("Redis.Host")+":"+configYml.GetString("Redis.Port"))
+			conn, err := redis.Dial("tcp", configs.Get().GetString("Redis.Host")+":"+configs.Get().GetString("Redis.Port"))
 			if err != nil {
 				variable.ZapLog.Error("初始化redis连接池失败" + err.Error())
 				return nil, err
 			}
-			auth := configYml.GetString("Redis.Auth") //通过配置项设置redis密码
+			auth := configs.Get().GetString("Redis.Auth") //通过配置项设置redis密码
 			if len(auth) >= 1 {
 				if _, err := conn.Do("AUTH", auth); err != nil {
 					_ = conn.Close()
 					variable.ZapLog.Error("Redis Auth 鉴权失败，密码错误" + err.Error())
 				}
 			}
-			_, _ = conn.Do("select", configYml.GetInt("Redis.IndexDb"))
+			_, _ = conn.Do("select", configs.Get().GetInt("Redis.IndexDb"))
 			return conn, err
 		},
 	}
@@ -53,7 +50,7 @@ func initRedisClientPool() *redis.Pool {
 
 // GetOneRedisClient 从连接池获取一个redis连接
 func GetOneRedisClient() *Client {
-	maxRetryTimes := configYml.GetInt("Redis.ConnFailRetryTimes")
+	maxRetryTimes := configs.Get().GetInt("Redis.ConnFailRetryTimes")
 	var oneConn redis.Conn
 	for i := 1; i <= maxRetryTimes; i++ {
 		oneConn = redisPool.Get()
@@ -64,7 +61,7 @@ func GetOneRedisClient() *Client {
 				return nil
 			}
 			//如果出现网络短暂的抖动，短暂休眠后，支持自动重连
-			time.Sleep(time.Second * configYml.GetDuration("Redis.ReConnectInterval"))
+			time.Sleep(time.Second * configs.Get().GetDuration("Redis.ReConnectInterval"))
 		} else {
 			break
 		}

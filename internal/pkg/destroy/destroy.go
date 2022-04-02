@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	"github.com/wrpota/go-echo/internal/global/variable"
-	event_manage "github.com/wrpota/go-echo/internal/pkg/core/event"
+	event_manage "github.com/wrpota/go-echo/internal/pkg/event"
 	"go.uber.org/zap"
 )
 

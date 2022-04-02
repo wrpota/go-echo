@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wrpota/go-echo/configs"
 	"github.com/wrpota/go-echo/internal/global/variable"
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
@@ -36,9 +37,9 @@ func GetDbWriteDriver(sqlType string) (*gorm.DB, error) {
 		return nil, err
 	} else {
 		rawDb.SetConnMaxIdleTime(time.Second * 30)
-		rawDb.SetConnMaxLifetime(variable.Config.GetDuration("Database.Write.SetConnMaxLifetime") * time.Second)
-		rawDb.SetMaxIdleConns(variable.Config.GetInt("Database.Write.SetMaxIdleConns"))
-		rawDb.SetMaxOpenConns(variable.Config.GetInt("Database.Write.SetMaxOpenConns"))
+		rawDb.SetConnMaxLifetime(configs.Get().GetDuration("Database.Write.SetConnMaxLifetime") * time.Second)
+		rawDb.SetMaxIdleConns(configs.Get().GetInt("Database.Write.SetMaxIdleConns"))
+		rawDb.SetMaxOpenConns(configs.Get().GetInt("Database.Write.SetMaxOpenConns"))
 		return gormDb, nil
 	}
 }
@@ -70,9 +71,9 @@ func GetDbReadDriver(sqlType string) (*gorm.DB, error) {
 		return nil, err
 	} else {
 		rawDb.SetConnMaxIdleTime(time.Second * 30)
-		rawDb.SetConnMaxLifetime(variable.Config.GetDuration("Database.Write.SetConnMaxLifetime") * time.Second)
-		rawDb.SetMaxIdleConns(variable.Config.GetInt("Database.Write.SetMaxIdleConns"))
-		rawDb.SetMaxOpenConns(variable.Config.GetInt("Database.Write.SetMaxOpenConns"))
+		rawDb.SetConnMaxLifetime(configs.Get().GetDuration("Database.Write.SetConnMaxLifetime") * time.Second)
+		rawDb.SetMaxIdleConns(configs.Get().GetInt("Database.Write.SetMaxIdleConns"))
+		rawDb.SetMaxOpenConns(configs.Get().GetInt("Database.Write.SetMaxOpenConns"))
 		return gormDb, nil
 	}
 }
@@ -95,12 +96,12 @@ func getDbDialector(sqlType, readWrite string) (gorm.Dialector, error) {
 }
 
 func getDsn(sqlType, readWrite string) string {
-	Host := variable.Config.GetString("Database." + readWrite + ".Host")
-	DataBase := variable.Config.GetString("Database." + readWrite + ".DataBase")
-	Port := variable.Config.GetInt("Database." + readWrite + ".Port")
-	User := variable.Config.GetString("Database." + readWrite + ".User")
-	Pass := variable.Config.GetString("Database." + readWrite + ".Pass")
-	Charset := variable.Config.GetString("Database." + readWrite + ".Charset")
+	Host := configs.Get().GetString("Database." + readWrite + ".Host")
+	DataBase := configs.Get().GetString("Database." + readWrite + ".DataBase")
+	Port := configs.Get().GetInt("Database." + readWrite + ".Port")
+	User := configs.Get().GetString("Database." + readWrite + ".User")
+	Pass := configs.Get().GetString("Database." + readWrite + ".Pass")
+	Charset := configs.Get().GetString("Database." + readWrite + ".Charset")
 
 	switch strings.ToLower(sqlType) {
 	case "mysql":

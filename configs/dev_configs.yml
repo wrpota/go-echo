@@ -1,4 +1,4 @@
-AppDebug: false # debug=true 调试模式，日志优先显示在控制台， debug=false 非调试模式，将写入日志文件
+AppDebug: true # debug=true 调试模式，日志优先显示在控制台， debug=false 非调试模式，将写入日志文件
 
 App:
   Name: "go-echo"
@@ -6,9 +6,10 @@ App:
 
 HttpServer:
   Web:
-    Port: 8080
+    Port: 8089
 
   AllowCrossDomain: false
+  MaxRequestsPerSecond: 10000
 
 Redis:
   Host: "127.0.0.1"
@@ -27,13 +28,13 @@ Logs:
   GoLogName: "golog.log"                            # 日志名称
   TextFormat: "json"                                #记录日志的格式，参数选项：console、json ， console 表示一般的文本格式
   TimePrecision: "millisecond"                         #记录日志时，相关的时间精度，该参数选项：second  、 millisecond ， 分别表示 秒 和 毫秒 ,默认为毫秒级别
-  MaxSize: 10                                           #每个日志的最大尺寸(以MB为单位）， 超过该值，系统将会自动进行切割
+  MaxSize: 100                                           #每个日志的最大尺寸(以MB为单位）， 超过该值，系统将会自动进行切割
   MaxBackups: 7                                        #保留旧日志最大个数
   MaxAge: 15                                           #保留旧日志最大天数
   Compress: false                                      #日志备份时，是否进行压缩
 
 Database:
-  UseDbType: "mysql"
+  UseDbType: "mysql"          #数据库类型 mysql sqlserver postgresql
   SlowThreshold: 30            # 慢 SQL 阈值(sql执行时间超过此时间单位（秒），就会触发系统日志记录)
   Write:
     Host: "127.0.0.1"
@@ -46,8 +47,6 @@ Database:
     SetMaxIdleConns: 10
     SetMaxOpenConns: 128
     SetConnMaxLifetime: 60    # 连接不活动时的最大生存时间(秒)
-    #ReConnectInterval: 1    # 保留项,重连数据库间隔秒数
-    #PingFailRetryTimes: 3   # 保留项,最大重连次数
   Read:
     Host: "127.0.0.1"
     DataBase: "golang_database"

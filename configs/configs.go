@@ -1,31 +1,35 @@
-package config
+package configs
 
 import (
-	"flag"
+	"bytes"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/wrpota/go-echo/internal/global/variable"
-	"github.com/wrpota/go-echo/internal/pkg/core/container"
-	"github.com/wrpota/go-echo/pkg/config/config_interface"
 	"github.com/wrpota/go-echo/pkg/env"
+	"github.com/wrpota/go-echo/pkg/file"
 
+	_ "embed"
 	"log"
 	"time"
 
 	"github.com/spf13/viper"
 )
 
-const (
-	Dev  = "dev"
-	Prod = "prod"
-	Test = "test"
-)
+var (
+	//go:embed dev_configs.yml
+	devConfigs []byte
 
-type ymlConfig struct {
-	File  string
-	ENV   string
-	viper *viper.Viper
-}
+	//go:embed fat_configs.yml
+	fatConfigs []byte
+
+	//go:embed pro_configs.yml
+	proConfigs []byte
+)
 
 var lastChangeTime time.Time
 
@@ -33,30 +37,87 @@ func init() {
 	lastChangeTime = time.Now()
 }
 
-func CreateYamlFactory() config_interface.ConfigInterface {
+var sMap sync.Map
 
-	var configPath string
-	// 读取输入目录
-	flag.StringVar(&configPath, "conf", "./configs", "配置文件目录")
-	flag.Parse()
-	// 配置文件所在目录
-	if configPath == "" {
-		configPath = variable.BasePath + "/configs"
+var once sync.Once
+
+const (
+	ConfigPrefix = "config:"
+)
+
+var instance *ymlConfig
+
+func Get() *ymlConfig {
+	once.Do(func() {
+		instance = createConfig().(*ymlConfig)
+	})
+	return instance
+}
+
+type ymlConfig struct {
+	File  string
+	ENV   string
+	viper *viper.Viper
+}
+
+type configInterface interface {
+	ConfigFileChangeListen()
+	Get(keyName string) interface{}
+	GetString(keyName string) string
+	GetBool(keyName string) bool
+	GetInt(keyName string) int
+	GetInt32(keyName string) int32
+	GetInt64(keyName string) int64
+	GetFloat64(keyName string) float64
+	GetDuration(keyName string) time.Duration
+	GetStringSlice(keyName string) []string
+}
+
+var _ configInterface = (*ymlConfig)(nil)
+
+func createConfig() configInterface {
+	var r io.Reader
+	switch env.Active().Value() {
+	case "dev":
+		r = bytes.NewReader(devConfigs)
+	case "fat":
+		r = bytes.NewReader(fatConfigs)
+	case "pro":
+		r = bytes.NewReader(proConfigs)
+	default:
+		r = bytes.NewReader(devConfigs)
 	}
 
 	viper := viper.New()
 
-	viper.AddConfigPath(configPath)
-
-	viper.SetConfigName(env.Active().Value() + "_config")
 	viper.SetConfigType("yml")
+	viper.SetConfigName(env.Active().Value() + "_configs")
+	viper.AddConfigPath("./configs")
+	configFile := "./configs/" + env.Active().Value() + "_configs.yml"
+	_, ok := file.IsExists(configFile)
+	if !ok {
+		if err := os.MkdirAll(filepath.Dir(configFile), 0766); err != nil {
+			panic(err)
+		}
+
+		f, err := os.Create(configFile)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+		if b, err := io.ReadAll(r); err == nil {
+			if err := os.WriteFile(configFile, b, 0766); err != nil {
+				panic(err)
+			}
+		}
+	}
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatal("初始化配置文件发生错误" + err.Error())
 	}
 
 	ymlConfig := &ymlConfig{
-		File:  configPath + "/config.yml",
+		File:  env.Active().Value() + "_configs.yml",
 		ENV:   env.Active().Value(),
 		viper: viper,
 	}
@@ -80,26 +141,53 @@ func (y *ymlConfig) ConfigFileChangeListen() {
 
 // 判断相关键是否已经缓存
 func (y *ymlConfig) keyIsCache(keyName string) bool {
-	if _, exists := container.CreateContainersFactory().Exists(variable.ConfigPrefix + keyName); exists {
+	if _, exists := y.Exists(ConfigPrefix + keyName); exists {
 		return true
 	} else {
 		return false
 	}
 }
 
+func (y *ymlConfig) Exists(key string) (interface{}, bool) {
+	return sMap.Load(key)
+}
+
 // 对键值进行缓存
-func (y *ymlConfig) cache(keyName string, value interface{}) bool {
-	return container.CreateContainersFactory().Set(variable.ConfigPrefix+keyName, value)
+func (y *ymlConfig) cache(keyName string, value interface{}) (res bool) {
+	var key = ConfigPrefix + keyName
+	if _, exists := y.Exists(key); exists == false {
+		sMap.Store(key, value)
+		res = true
+	} else {
+		// 程序启动阶段，zaplog 未初始化，使用系统log打印启动时候发生的异常日志
+		if variable.ZapLog == nil {
+			log.Fatal("请解决键名重复问题,相关键：" + key)
+		} else {
+			// 程序启动初始化完成
+			variable.ZapLog.Warn("相关键：" + key)
+		}
+	}
+	return
 }
 
 // 通过键获取缓存的值
 func (y *ymlConfig) getValueFromCache(keyName string) interface{} {
-	return container.CreateContainersFactory().Get(variable.ConfigPrefix + keyName)
+	if value, exists := y.Exists(ConfigPrefix + keyName); exists {
+		return value
+	}
+	return nil
 }
 
 // 清空已经窜换的配置项信息
 func (y *ymlConfig) clearCache() {
-	container.CreateContainersFactory().FuzzyDelete(variable.ConfigPrefix)
+	sMap.Range(func(key, value interface{}) bool {
+		if keyname, ok := key.(string); ok {
+			if strings.HasPrefix(keyname, ConfigPrefix) {
+				sMap.Delete(keyname)
+			}
+		}
+		return true
+	})
 }
 
 // Get 一个原始值

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wrpota/go-echo/configs"
 	"github.com/wrpota/go-echo/internal/global/variable"
 	"go.uber.org/zap"
 	gormLog "gorm.io/gorm/logger"
@@ -23,7 +24,7 @@ func createCustomGormLog(sqlType string, options ...Options) gormLog.Interface {
 		traceErrStr  = "%s %s\n[%.3fms] [rows:%v] %s"
 	)
 	logConf := gormLog.Config{
-		SlowThreshold: time.Second * variable.Config.GetDuration("Database.Gormv2."+sqlType+"."+".SlowThreshold"),
+		SlowThreshold: time.Second * configs.Get().GetDuration("Database.Gormv2."+sqlType+"."+".SlowThreshold"),
 		LogLevel:      gormLog.Warn,
 		Colorful:      false,
 	}

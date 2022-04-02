@@ -1,6 +1,8 @@
 package user
 
 import (
+	"fmt"
+
 	"github.com/labstack/echo/v4"
 	"github.com/wrpota/go-echo/internal/pkg/response"
 )
@@ -18,10 +20,10 @@ func NewUser() *User {
 }
 
 func (u *User) HelloWorld(c echo.Context) error {
+	fmt.Println("Hello World")
 	user := new(UserRequest)
 	if err := c.Bind(user); err != nil {
 		return nil
 	}
-
 	return response.Success(c, "success", user)
 }
