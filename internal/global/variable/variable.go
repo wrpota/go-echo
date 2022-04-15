@@ -18,8 +18,8 @@ var (
 	ZapLog     *zap.Logger //日志指针
 	EchoZapLog *zap.Logger //日志指针
 
-	GormReadMysql *gorm.DB
-	GormWriteDb   *gorm.DB
+	GormReadDb  *gorm.DB
+	GormWriteDb *gorm.DB
 )
 
 func init() {

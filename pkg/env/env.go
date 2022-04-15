@@ -1,8 +1,8 @@
 package env
 
 import (
-	"flag"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -46,10 +46,8 @@ func (e *environment) IsPro() bool {
 func (e *environment) i() {}
 
 func init() {
-	env := flag.String("env", "", "请输入运行环境:\n dev:开发环境\n fat:测试环境\n pro:正式环境\n")
-	flag.Parse()
-
-	switch strings.ToLower(strings.TrimSpace(*env)) {
+	env := os.Getenv("GO_ENV")
+	switch strings.ToLower(strings.TrimSpace(env)) {
 	case "dev":
 		active = dev
 	case "pro":
@@ -58,7 +56,7 @@ func init() {
 		active = fat
 	default:
 		active = dev
-		fmt.Println("Warning: '-env' cannot be found, or it is illegal. The default 'dev' will be used.")
+		fmt.Println("Warning: The environment variable 'GO_ENV' cannot be found, or it is illegal. The default 'dev' will be used.")
 	}
 }
 

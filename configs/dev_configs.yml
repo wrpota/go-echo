@@ -32,7 +32,6 @@ Logs:
   MaxBackups: 7                                        #保留旧日志最大个数
   MaxAge: 15                                           #保留旧日志最大天数
   Compress: false                                      #日志备份时，是否进行压缩
-
 Database:
   UseDbType: "mysql"          #数据库类型 mysql sqlserver postgresql
   SlowThreshold: 30            # 慢 SQL 阈值(sql执行时间超过此时间单位（秒），就会触发系统日志记录)

@@ -21,7 +21,7 @@ func init() {
 	if dbRead, err := cgorm.GetDbReadDriver(configs.Get().GetString("Database.UseDbType")); err != nil {
 		log.Fatal("Gorm 数据库驱动、连接初始化失败" + err.Error())
 	} else {
-		variable.GormReadMysql = dbRead
+		variable.GormReadDb = dbRead
 	}
 	if dbWrite, err := cgorm.GetDbWriteDriver(configs.Get().GetString("Database.UseDbType")); err != nil {
 		log.Fatal("Gorm 数据库驱动、连接初始化失败" + err.Error())
